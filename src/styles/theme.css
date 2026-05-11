@@ -1,0 +1,15 @@
+:root {
+  --green-primary: #2E7D32;
+  --green-light: #66BB6A;
+
+  --yellow-accent: #FBC02D;
+  --yellow-soft: #FFF3CD;
+
+  --bg-main: #F8FFF8;
+  --bg-secondary: #EEF7EE;
+
+  --text-dark: #1B1B1B;
+  --text-light: #5F6B5F;
+
+  --white: #FFFFFF;
+}
