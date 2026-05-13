@@ -1,15 +1,18 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useFavorites } from '../context/Favoritecontext'
 
 export default function RecipeCard({ recipe }) {
+  const navigate = useNavigate()
   const { favs, toggle } = useFavorites()
-  const { label, image, calories, cuisineType } = recipe
+  const { id, label, image, calories, cuisineType } = recipe
   const isFavorite = favs.some((f) => f.label === label)
 
   return (
     <motion.div
       whileHover={{ y: -4 }}
       className="card"
+      onClick={() => navigate(`/recipes/${id}`)}
       style={{
         overflow: 'hidden',
         cursor: 'pointer',
@@ -53,8 +56,8 @@ export default function RecipeCard({ recipe }) {
             justifyContent: 'center',
             transition: 'transform 0.2s',
           }}
-          onMouseEnter={(e) => (e.target.style.transform = 'scale(1.1)')}
-          onMouseLeave={(e) => (e.target.style.transform = 'scale(1)')}>
+          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}>
           {isFavorite ? '❤️' : '🤍'}
         </button>
       </div>
@@ -96,7 +99,7 @@ export default function RecipeCard({ recipe }) {
               borderRadius: '20px',
               whiteSpace: 'nowrap',
             }}>
-            {Math.round(calories)} cal
+            {calories ? `${Math.round(calories)} cal` : '— cal'}
           </span>
         </div>
       </div>

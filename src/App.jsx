@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import Navbar from './layouts/Navbar'
 import Home from './pages/Home'
 import Recipes from './pages/Recipes'
+import RecipeDetails from './pages/RecipeDetails'
 import Calculator from './pages/Calculator'
 import MealPlanner from './pages/MealPlanner'
 import Dashboard from './pages/Dashboard'
@@ -17,6 +18,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/recipes" element={<Recipes />} />
+            <Route path="/recipes/:id" element={<RecipeDetails />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/meal-planner" element={<MealPlanner />} />
             <Route path="/dashboard" element={<Dashboard />} />
