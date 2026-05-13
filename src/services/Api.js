@@ -1,64 +1,75 @@
 import axios from 'axios'
 
-const API_KEY = import.meta.env.VITE_SPOONACULAR_KEY
-const BASE_URL = 'https://api.spoonacular.com/recipes'
+const API_KEY = import.meta.env.VITE_TASTY_KEY
+const BASE_URL = 'https://tasty.p.rapidapi.com'
 
-// Normalise Spoonacular response to the shape your components expect
+const headers = {
+  'x-rapidapi-key': API_KEY,
+  'x-rapidapi-host': 'tasty.p.rapidapi.com',
+}
+
 const normaliseRecipe = (recipe) => {
-  const nutrients = recipe.nutrition?.nutrients || []
-  const get = (name) => nutrients.find((n) => n.name === name)?.amount || 0
+  const nutrition = recipe.nutrition || {}
+  const calories  = Math.round(nutrition.calories || 0)
+  const protein   = parseFloat(nutrition.protein  || 0)
+  const fat       = parseFloat(nutrition.fat       || 0)
+  const carbs     = parseFloat(nutrition.carbohydrates || 0)
+
+  const ingredientLines = (recipe.sections || []).flatMap((section) =>
+    (section.components || []).map((c) => c.raw_text || c.ingredient?.name || '')
+  ).filter(Boolean)
+
+  const instructions = (recipe.instructions || [])
+    .sort((a, b) => a.position - b.position)
+    .map((i) => i.display_text)
+    .join('\n')
 
   return {
     id: String(recipe.id),
-    label: recipe.title,
-    image: recipe.image,
-    source: recipe.sourceName || '',
-    url: recipe.sourceUrl || '',
-    cuisineType: recipe.cuisines?.length ? recipe.cuisines.map((c) => c.toLowerCase()) : ['other'],
-    mealType: recipe.dishTypes?.length ? recipe.dishTypes.map((d) => d.toLowerCase()) : ['other'],
-    dietLabels: recipe.diets || [],
-    healthLabels: [
-      recipe.vegetarian && 'Vegetarian',
-      recipe.vegan && 'Vegan',
-      recipe.glutenFree && 'Gluten-Free',
-      recipe.dairyFree && 'Dairy-Free',
-    ].filter(Boolean),
-    ingredientLines: recipe.extendedIngredients?.map((i) => i.original) || [],
-    calories: Math.round(get('Calories')),
-    // Matches the Edamam totalNutrients shape your Calculator uses
+    label: recipe.name,
+    image: recipe.thumbnail_url || '',
+    source: recipe.credits?.[0]?.name || 'Tasty',
+    url: recipe.original_video_url || '',
+    cuisineType: recipe.tags
+      ?.filter((t) => t.type === 'cuisine')
+      .map((t) => t.display_name.toLowerCase()) || ['other'],
+    mealType: recipe.tags
+      ?.filter((t) => t.type === 'meal')
+      .map((t) => t.display_name.toLowerCase()) || ['other'],
+    dietLabels: recipe.tags
+      ?.filter((t) => t.type === 'dietary')
+      .map((t) => t.display_name) || [],
+    healthLabels: recipe.tags
+      ?.filter((t) => ['healthy', 'dietary'].includes(t.type))
+      .map((t) => t.display_name) || [],
+    ingredientLines,
+    calories,
     totalNutrients: {
-      PROCNT: { quantity: get('Protein'), unit: 'g' },
-      FAT:    { quantity: get('Fat'), unit: 'g' },
-      CHOCDF: { quantity: get('Carbohydrates'), unit: 'g' },
+      PROCNT: { quantity: protein, unit: 'g' },
+      FAT:    { quantity: fat,     unit: 'g' },
+      CHOCDF: { quantity: carbs,   unit: 'g' },
     },
-    instructions: recipe.instructions || '',
-    yield: recipe.servings || 4,
+    instructions,
+    yield: recipe.num_servings || 4,
   }
 }
 
 export const searchRecipes = async (query, filters = {}) => {
   try {
-    const params = {
-      apiKey: API_KEY,
-      query,
-      number: 20,
-      addRecipeNutrition: true, // gets calories + macros in one call
-      instructionsRequired: true,
-    }
+    const params = { from: 0, size: 20, q: query }
 
-    // Map Edamam-style diet filter names to Spoonacular's
-    const dietMap = {
-      'balanced':     'balanced',
+    // Map diet filters to Tasty tags
+    const dietTagMap = {
+      'vegan':        'vegan',
+      'balanced':     'healthy',
       'high-protein': 'high-protein',
       'low-fat':      'low-fat',
-      'vegan':        'vegan',
     }
-    if (filters.diet && dietMap[filters.diet]) {
-      params.diet = dietMap[filters.diet]
+    if (filters.diet && dietTagMap[filters.diet]) {
+      params.tags = dietTagMap[filters.diet]
     }
 
-    const { data } = await axios.get(`${BASE_URL}/complexSearch`, { params })
-
+    const { data } = await axios.get(`${BASE_URL}/recipes/list`, { headers, params })
     return (data.results || []).map(normaliseRecipe)
   } catch (error) {
     console.error('Failed to search recipes:', error)
@@ -68,13 +79,10 @@ export const searchRecipes = async (query, filters = {}) => {
 
 export const getRecipeById = async (id) => {
   try {
-    const { data } = await axios.get(`${BASE_URL}/${id}/information`, {
-      params: {
-        apiKey: API_KEY,
-        includeNutrition: true,
-      },
+    const { data } = await axios.get(`${BASE_URL}/recipes/get-more-info`, {
+      headers,
+      params: { id },
     })
-
     return normaliseRecipe(data)
   } catch (error) {
     console.error('Failed to get recipe:', error)
